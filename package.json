@@ -1,0 +1,27 @@
+{
+  "name": "dv-cli",
+  "version": "0.1.0",
+  "description": "CLI wrapper for Doctor-Ville automation (login and point check)",
+  "main": "dist/cli.js",
+  "bin": {
+    "dv-cli": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli.js",
+    "dev": "tsx src/cli.ts",
+    "login": "tsx src/cli.ts login",
+    "point": "tsx src/cli.ts point"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "playwright": "^1.57.0",
+    "dotenv": "^17.2.3",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "tsx": "^4.0.0"
+  }
+}
