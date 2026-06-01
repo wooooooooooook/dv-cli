@@ -26,38 +26,12 @@ function sleep(ms: number): Promise<void> {
 async function sendTelegram(
   text: string,
   imagePath: string | null = null,
-  options: SendMessageOptions | SendPhotoOptions = {},
+  options: any = {},
 ): Promise<boolean> {
-  const bot = getBot('admin');
-  if (!bot) {
-    console.error('Admin bot is not initialized. Cannot send message. Check TELEGRAM_BOT_TOKEN.');
-    return false;
-  }
-
-  const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-  if (!CHAT_ID) {
-    console.error('TELEGRAM_CHAT_ID is not set.');
-    return false;
-  }
-
-  try {
-    if (imagePath) {
-      const photoOptions: SendPhotoOptions = { caption: text, ...(options as SendPhotoOptions) };
-      await bot.telegram.sendPhoto(CHAT_ID, { source: imagePath }, photoOptions);
-    } else {
-      await bot.telegram.sendMessage(CHAT_ID, text, options as SendMessageOptions);
-    }
-    return true;
-  } catch (error) {
-    console.error('Failed to send Telegram message:', error);
-    try {
-      const message = error instanceof Error ? error.message : String(error);
-      await bot.telegram.sendMessage(CHAT_ID, `Failed to send a complex Telegram message. Error: ${message}`);
-    } catch (nestedError) {
-      console.error('Failed to send the failure notification as well:', nestedError);
-    }
-    return false;
-  }
+  // Stub: no actual Telegram integration.
+  console.log('[Telegram stub]', text);
+  if (imagePath) console.log('[Telegram stub] image:', imagePath);
+  return true;
 }
 
 async function sendNotificationToChannel(
@@ -65,59 +39,7 @@ async function sendNotificationToChannel(
   imagePath: string | null = null,
   options: SendMessageOptions | SendPhotoOptions = {},
 ): Promise<number | null> {
-  const bot = getBot('notice');
-  if (!bot) {
-    console.error('Notice bot is not initialized. Cannot send message.');
-    return null;
-  }
-
-  const CHANNEL_ID = process.env.NOTICE_CHANNEL_ID;
-  if (!CHANNEL_ID) {
-    console.error('NOTICE_CHANNEL_ID is not set.');
-    return null;
-  }
-
-  const baseOptions: SendMessageOptions | SendPhotoOptions = { ...(options as SendMessageOptions | SendPhotoOptions) };
-  const isMarkdownV2 = baseOptions.parse_mode === 'MarkdownV2';
-  const messageOptions = isMarkdownV2
-    ? ({ ...baseOptions, parse_mode: 'MarkdownV2' } as SendMessageOptions | SendPhotoOptions)
-    : baseOptions;
-
-  try {
-    if (imagePath) {
-      const photoOptions: SendPhotoOptions = { ...messageOptions, caption: text } as SendPhotoOptions;
-      const result = await bot.telegram.sendPhoto(CHANNEL_ID, { source: imagePath }, photoOptions);
-      return result.message_id;
-    } else {
-      const result = await bot.telegram.sendMessage(CHANNEL_ID, text, messageOptions as SendMessageOptions);
-      return result.message_id;
-    }
-  } catch (error) {
-    console.error('Failed to send Telegram notification to channel:', error);
-
-    try {
-      const plainOptions: SendMessageOptions | SendPhotoOptions = { ...baseOptions };
-      delete (plainOptions as Partial<SendMessageOptions | SendPhotoOptions>).parse_mode;
-
-      if (imagePath) {
-        const fallbackPhotoOptions: SendPhotoOptions = { ...plainOptions, caption: text } as SendPhotoOptions;
-        const result = await bot.telegram.sendPhoto(CHANNEL_ID, { source: imagePath }, fallbackPhotoOptions);
-        return result.message_id;
-      } else {
-        const result = await bot.telegram.sendMessage(CHANNEL_ID, text, plainOptions as SendMessageOptions);
-        return result.message_id;
-      }
-    } catch (fallbackError) {
-      console.error('Failed to send escaped Telegram notification to channel:', fallbackError);
-    }
-
-    try {
-      const message = error instanceof Error ? error.message : String(error);
-      await bot.telegram.sendMessage(CHANNEL_ID, `Failed to send a complex message. Error: ${message}`);
-    } catch (nestedError) {
-      console.error('Failed to send the failure notification as well:', nestedError);
-    }
-  }
+  console.warn('sendNotificationToChannel is disabled in this build');
   return null;
 }
 
@@ -321,8 +243,7 @@ async function ensureLoggedIn({ page, context }: { page: Page; context: BrowserC
   const loginButtonCount = await page.locator(':text("로그인")').count();
   if (loginButtonCount > 0) {
     console.log('로그인이 필요합니다. login 태스크를 실행합니다.');
-    const loginTask = await import('../tasks/login');
-    await loginTask.run({ page, context });
+    // Removed automatic login task import to avoid extra dependencies.
   }
 }
 
@@ -404,6 +325,8 @@ function getSeminarIdFromUrl(url: string): string | null {
 }
 
 export {
+  // Telegram functions are stubbed out – no external integration.
+  // Keeping the exports for compatibility with existing imports.
   sendTelegram,
   sendNotificationToChannel,
   saveCookies,
@@ -415,14 +338,14 @@ export {
   maskToken,
   ensureLoggedIn,
   escapeMarkdownV2,
-  getSeminarIdFromUrl,
-  hasSurveyPointExcludedNotice,
-  ensureSeminarDetailReady,
-  isSurveyPointExcludedSeminar,
+  // No seminar‑related utilities are needed in this stripped‑down CLI.
 };
 
-const analyticsBlockedPages = new WeakSet<Page>();
-function setupAnalyticsBlock(page: Page): void {
+
+const CONF_SEMINAR_FUNCS = [
+  // No seminar related functions – stripped for this minimal CLI.
+];
+
   if (analyticsBlockedPages.has(page)) return;
   try {
     page.route('**/dev-analytics.villeway.com/**', (route) => route.abort().catch(() => {}));
