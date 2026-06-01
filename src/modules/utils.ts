@@ -1,13 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import type { Telegraf } from 'telegraf';
 import type { BrowserContext, Page } from 'playwright';
-import { getBot } from '../services/bot_instance';
 
 const COOKIE_FILE = path.join(process.cwd(), 'cookies.json');
 const LOCALSTORAGE_FILE = path.join(process.cwd(), 'localstorage.json');
-type SendMessageOptions = Parameters<Telegraf['telegram']['sendMessage']>[2];
-type SendPhotoOptions = Parameters<Telegraf['telegram']['sendPhoto']>[2];
 
 function escapeMarkdownV2(text: string): string {
   if (!text) return '';
@@ -37,7 +33,7 @@ async function sendTelegram(
 async function sendNotificationToChannel(
   text: string,
   imagePath: string | null = null,
-  options: SendMessageOptions | SendPhotoOptions = {},
+  options: any = {},
 ): Promise<number | null> {
   console.warn('sendNotificationToChannel is disabled in this build');
   return null;
@@ -247,86 +243,18 @@ async function ensureLoggedIn({ page, context }: { page: Page; context: BrowserC
   }
 }
 
-async function hasSurveyPointExcludedNotice(page: Page): Promise<boolean> {
-  const isSurveyPointExcludedByBanner = await page
-    .locator('text=/포인트가\\s*지급되지\\s*않는/')
-    .first()
-    .isVisible({ timeout: 3000 })
-    .catch(() => false);
-  const isSurveyPointExcludedByText = await page
-    .locator('body')
-    .first()
-    .innerText()
-    .then((text) => /포인트가\s*지급되지\s*않는\s*세미나/.test(text.replace(/\s+/g, ' ')))
-    .catch(() => false);
-  return isSurveyPointExcludedByBanner || isSurveyPointExcludedByText;
-}
-
-async function ensureSeminarDetailReady(page: Page, url: string): Promise<void> {
-  const shareLocator = page.locator('text=공유').first();
-
-  const maxRefreshRetries = 3;
-  for (let attempt = 0; attempt <= maxRefreshRetries; attempt += 1) {
-    const isShareVisible = await shareLocator.isVisible({ timeout: 3000 }).catch(() => false);
-    if (isShareVisible) return;
-
-    if (attempt < maxRefreshRetries) {
-      console.warn(
-        `세미나 상세 페이지 로딩 지연: 공유 텍스트 미검출, 새로고침 재시도 (${attempt + 1}/${maxRefreshRetries})`,
-      );
-      await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => false);
-      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => false);
-      continue;
-    }
-  }
-
-  const screenshotDir = path.join(process.cwd(), 'screenshot');
-  const screenshotPath = path.join(
-    screenshotDir,
-    `seminar_detail_ready_failed_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.png`,
-  );
-
+const analyticsBlockedPages = new WeakSet<Page>();
+function setupAnalyticsBlock(page: Page): void {
+  if (analyticsBlockedPages.has(page)) return;
   try {
-    await fs.promises.mkdir(screenshotDir, { recursive: true });
-    await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => {});
-    await sendTelegram(`세미나 상세 페이지 로딩 확인 실패("공유" 텍스트 미검출): ${url}`, screenshotPath).catch(
-      () => false,
-    );
-  } finally {
-    await fs.promises.unlink(screenshotPath).catch(() => {});
-  }
-
-  throw new Error(`세미나 상세 페이지 로딩 확인 실패("공유" 텍스트 미검출): ${url}`);
-}
-
-async function isSurveyPointExcludedSeminar(context: BrowserContext, url: string): Promise<boolean> {
-  const page = await context.newPage();
-  try {
-    await ensureLoggedIn({ page, context });
-    await safeGoto(page, url, { waitUntil: 'domcontentloaded', timeout: 15000 });
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
-    await ensureSeminarDetailReady(page, url);
-    return hasSurveyPointExcludedNotice(page);
+    page.route('**/dev-analytics.villeway.com/**', (route) => route.abort().catch(() => {}));
+    analyticsBlockedPages.add(page);
   } catch (_e) {
-    return false;
-  } finally {
-    await page.close().catch(() => {});
-  }
-}
-
-function getSeminarIdFromUrl(url: string): string | null {
-  try {
-    const urlObj = new URL(url);
-    return urlObj.searchParams.get('seminarId');
-  } catch (_e) {
-    console.error('Failed to extract seminarId from URL:', url, _e);
-    return null;
+    console.error('setupAnalyticsBlock failed', _e);
   }
 }
 
 export {
-  // Telegram functions are stubbed out – no external integration.
-  // Keeping the exports for compatibility with existing imports.
   sendTelegram,
   sendNotificationToChannel,
   saveCookies,
@@ -338,19 +266,4 @@ export {
   maskToken,
   ensureLoggedIn,
   escapeMarkdownV2,
-  // No seminar‑related utilities are needed in this stripped‑down CLI.
 };
-
-
-const CONF_SEMINAR_FUNCS = [
-  // No seminar related functions – stripped for this minimal CLI.
-];
-
-  if (analyticsBlockedPages.has(page)) return;
-  try {
-    page.route('**/dev-analytics.villeway.com/**', (route) => route.abort().catch(() => {}));
-    analyticsBlockedPages.add(page);
-  } catch (_e) {
-    console.error('setupAnalyticsBlock failed', _e);
-  }
-}

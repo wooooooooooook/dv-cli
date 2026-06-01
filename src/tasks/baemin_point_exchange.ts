@@ -63,7 +63,7 @@ async function run({ page, context, maxIterations }: PlaywrightRunArgs): Promise
       const currentUrl = workPage.url();
       await Promise.all([
         workPage
-          .waitForURL((url) => url.toString() !== currentUrl, { waitUntil: 'domcontentloaded', timeout: 10000 })
+          .waitForURL((url: URL) => url.toString() !== currentUrl, { waitUntil: 'domcontentloaded', timeout: 10000 })
           .catch(() => null),
         pointShopLink.click(),
       ]);
@@ -121,7 +121,7 @@ async function run({ page, context, maxIterations }: PlaywrightRunArgs): Promise
       const currentUrl = workPage.url();
       await Promise.all([
         workPage
-          .waitForURL((url) => url.toString() !== currentUrl, { waitUntil: 'domcontentloaded', timeout: 15000 })
+          .waitForURL((url: URL) => url.toString() !== currentUrl, { waitUntil: 'domcontentloaded', timeout: 15000 })
           .catch(() => null),
         workPage.locator('#btnPayment').click(),
       ]);
