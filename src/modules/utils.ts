@@ -2,8 +2,8 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { BrowserContext, Page } from 'playwright';
 
-export async function saveCookies(page: Page) {
-  const cookies = await page.context().cookies();
+export async function saveCookies(context: BrowserContext) {
+  const cookies = await context.cookies();
   await fs.writeFile(path.join(process.cwd(), 'cookies.json'), JSON.stringify(cookies, null, 2));
 }
 
@@ -54,13 +54,8 @@ export function maskToken(token: string) {
 }
 
 export async function ensureLoggedIn({ page, context }: { page: Page; context: BrowserContext }): Promise<void> {
-  if (page.url() === 'about:blank' || !page.url()) {
-    await safeGoto(page, 'https://www.doctorville.co.kr/', { waitUntil: 'load', timeout: 30000 }, 1);
-  }
-  const loginButtonCount = await page.locator('.login_btn').count();
-  if (loginButtonCount > 0) {
-    throw new Error('로그인이 필요합니다. login 태스크를 실행하세요.');
-  }
+  // 쿠키와 localStorage 로드
+  await loadCookies(context).catch(() => {});
 }
 
 export async function sendTelegram(text: string, imagePath: string | null = null) {
