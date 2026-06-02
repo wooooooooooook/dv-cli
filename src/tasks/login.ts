@@ -21,8 +21,6 @@ async function run({ page, context }: { page: Page; context: BrowserContext }) {
       // 이미 로그인되어 있음
       await safeGoto(page, TARGET_PAGE, { waitUntil: 'load', timeout: 30000 }, 2);
       await page.screenshot({ path: 'screenshot/login_success.png' }).catch(() => {});
-      await saveCookies(context);
-      await saveLocalStorage(page).catch(() => {});
       return { success: true, message: '로그인 성공했습니다. (이미 로그인 됨)' };
     }
 
@@ -62,8 +60,6 @@ async function run({ page, context }: { page: Page; context: BrowserContext }) {
 
     await safeGoto(page, TARGET_PAGE, { waitUntil: 'load', timeout: 30000 }, 2);
     await page.screenshot({ path: 'screenshot/login_success.png' }).catch(() => {});
-    await saveCookies(context);
-    await saveLocalStorage(page).catch(() => {});
     return { success: true, message: '로그인 성공했습니다.' };
   } catch (error) {
     console.error(

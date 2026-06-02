@@ -54,8 +54,8 @@ export function maskToken(token: string) {
 }
 
 export async function ensureLoggedIn({ page, context }: { page: Page; context: BrowserContext }): Promise<void> {
-  // 쿠키와 localStorage 로드
-  await loadCookies(context).catch(() => {});
+  // launchPersistentContext 사용 시 브라우저가 자동으로 세션 관리
+  // 수동 쿠키 로드 불필요
 }
 
 export async function sendTelegram(text: string, imagePath: string | null = null) {

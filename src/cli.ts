@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import dotenv from 'dotenv';
 import { chromium } from 'playwright';
+import * as path from 'path';
 import { ensureLoggedIn } from './modules/utils';
 import * as loginTask from './tasks/login';
 import * as checkPointTask from './tasks/check_point';
@@ -15,13 +16,16 @@ const program = new Command();
 program.name('dv-cli').description('Doctor-Ville CLI wrapper (login, point).').version('0.1.0');
 
 async function withBrowser(callback: (page:any, context:any) => Promise<void>) {
-  const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
-  const context = await browser.newContext();
-  const page = await context.newPage();
+  const userDataDir = path.join(process.cwd(), '.browser-data');
+  const context = await chromium.launchPersistentContext(userDataDir, { 
+    headless: true, 
+    args: ['--no-sandbox'] 
+  });
+  const page = context.pages()[0] || await context.newPage();
   try {
     await callback(page, context);
   } finally {
-    await browser.close();
+    await context.close();
   }
 }
 
