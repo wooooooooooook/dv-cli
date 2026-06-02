@@ -6,6 +6,8 @@ import * as loginTask from './tasks/login';
 import * as checkPointTask from './tasks/check_point';
 import * as naverpayTask from './tasks/naverpay_point_exchange';
 import * as baeminTask from './tasks/baemin_point_exchange';
+import * as attendanceTask from './tasks/attendance';
+import * as todayQuizTask from './tasks/today_quiz';
 
 dotenv.config();
 
@@ -60,6 +62,26 @@ program.command('baemin')
       await ensureLoggedIn({ page, context });
       const result = await baeminTask.run({ page, context });
       console.log('배민 교환 결과:', JSON.stringify(result));
+    });
+  });
+
+program.command('attendance')
+  .description('출석 체크')
+  .action(async () => {
+    await withBrowser(async (page, context) => {
+      await ensureLoggedIn({ page, context });
+      const result = await attendanceTask.run({ page, context });
+      console.log('출석 체크 결과:', JSON.stringify(result));
+    });
+  });
+
+program.command('today_quiz')
+  .description('오늘의 퀴즈')
+  .action(async () => {
+    await withBrowser(async (page, context) => {
+      await ensureLoggedIn({ page, context });
+      const result = await todayQuizTask.run({ page, context });
+      console.log('오늘의 퀴즈 결과:', JSON.stringify(result));
     });
   });
 
