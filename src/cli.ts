@@ -7,6 +7,7 @@ import * as loginTask from './tasks/login';
 import * as checkPointTask from './tasks/check_point';
 import * as naverpayTask from './tasks/naverpay_point_exchange';
 import * as baeminTask from './tasks/baemin_point_exchange';
+import * as kakaopayTask from './tasks/kakaopay_point_exchange';
 import * as attendanceTask from './tasks/attendance';
 import * as todayQuizTask from './tasks/today_quiz';
 
@@ -66,6 +67,16 @@ program.command('baemin')
       await ensureLoggedIn({ page, context });
       const result = await baeminTask.run({ page, context });
       console.log('배민 교환 결과:', JSON.stringify(result));
+    });
+  });
+
+program.command('kakaopay')
+  .description('카카오페이 포인트 교환')
+  .action(async () => {
+    await withBrowser(async (page, context) => {
+      await ensureLoggedIn({ page, context });
+      const result = await kakaopayTask.run({ page, context });
+      console.log('카카오페이 교환 결과:', JSON.stringify(result));
     });
   });
 
