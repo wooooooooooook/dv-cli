@@ -1,7 +1,7 @@
 {
   "name": "dv-cli",
   "version": "0.1.0",
-  "description": "CLI wrapper for Doctor-Ville automation (login and point check)",
+  "description": "Doctor-Ville CLI — 닥터빌 자동화 (로그인, 포인트조회, 포인트교환, 출석, 퀴즈)",
   "main": "dist/cli.js",
   "bin": {
     "dv-cli": "./dist/cli.js"
@@ -11,7 +11,13 @@
     "start": "node dist/cli.js",
     "dev": "tsx src/cli.ts",
     "login": "tsx src/cli.ts login",
-    "point": "tsx src/cli.ts point"
+    "point": "tsx src/cli.ts point",
+    "naverpay": "tsx src/cli.ts naverpay",
+    "baemin": "tsx src/cli.ts baemin",
+    "kakaopay": "tsx src/cli.ts kakaopay",
+    "kakaopay5k": "tsx src/cli.ts kakaopay5k",
+    "attendance": "tsx src/cli.ts attendance",
+    "quiz": "tsx src/cli.ts today_quiz"
   },
   "author": "",
   "license": "ISC",
