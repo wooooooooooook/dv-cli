@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { BrowserContext, Page } from 'playwright';
+import * as loginTask from '../tasks/login';
 
 export async function saveCookies(context: BrowserContext) {
   const cookies = await context.cookies();
@@ -53,9 +54,21 @@ export function maskToken(token: string) {
   return token.replace(/.(?=.{4})/g, '*');
 }
 
+const CHECK_INFO_URL = 'https://m.doctorville.co.kr/mypage/info';
+
 export async function ensureLoggedIn({ page, context }: { page: Page; context: BrowserContext }): Promise<void> {
-  // launchPersistentContext 사용 시 브라우저가 자동으로 세션 관리
-  // 수동 쿠키 로드 불필요
+  // 1. 로그인 상태 확인
+  await safeGoto(page, CHECK_INFO_URL, { waitUntil: 'load', timeout: 30000 }, 2);
+  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+
+  const currentUrl = page.url();
+  if (!currentUrl.includes('/member/login')) {
+    console.log('[ensureLoggedIn] 이미 로그인 상태');
+    return; // 이미 로그인됨
+  }
+
+  console.log('[ensureLoggedIn] 로그인 필요 — 재로그인 수행');
+  await loginTask.run({ page, context });
 }
 
 export async function sendTelegram(text: string, imagePath: string | null = null) {
@@ -67,5 +80,5 @@ export async function sendNotificationToChannel(text: string, imagePath: string 
 }
 
 export function escapeMarkdownV2(text: string) {
-  return text.replace(/([\_\*\[\]\(\)\~\`\>\#\+\-=｜\{\}\.]\s*)/g, '\\$1');
+  return text.replace(/([\_\*\[\]\(\)\~\`\>\#\+\-\=｜\{\}\.]\s*)/g, '\\$1');
 }

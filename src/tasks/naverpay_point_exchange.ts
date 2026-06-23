@@ -9,6 +9,56 @@ const ENTERTAINMENT_URL = 'https://www.doctorville.co.kr/entertainment/main';
 const SUCCESS_TEXT = '주문이 완료되었습니다.';
 const DEFAULT_POINT = '4900';
 
+/** 상품 페이지에서 금액을 추출합니다. 실패 시 DEFAULT_POINT 반환 */
+async function getProductPrice(page: any): Promise<string> {
+  const selectors = [
+    '#goods_price',
+    '#goodsPrice',
+    '#salePrice',
+    '#totalPrice',
+    '#price',
+    'em#totalPrice',
+    '#s_price',
+    '.sell_price',
+    '.sale_price',
+    'span.price',
+    '.price',
+    'span[id*="price"]',
+    'em[id*="price"]',
+    'strong[id*="price"]',
+    'strong[id*="sale"]',
+  ];
+  for (const sel of selectors) {
+    try {
+      const el = page.locator(sel).first();
+      if ((await el.count()) > 0) {
+        const text = (await el.textContent()) || '';
+        const cleaned = text.replace(/[^0-9]/g, '');
+        if (cleaned.length > 0) {
+          return cleaned;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  // Fallback: 페이지 전체에서 "4,900" 같은 금액 패턴 찾기
+  try {
+    const body = page.locator('body');
+    const text = await body.textContent();
+    if (text) {
+      // "KRW" 또는 "원" 앞의 숫자 찾기
+      const priceMatch = text.match(/(\d{1,3}(?:,\d{3})*)\s*(?:원|KRW|₩)/);
+      if (priceMatch) {
+        return priceMatch[1].replace(/,/g, '');
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_POINT;
+}
+
 async function run({ page, context, maxIterations }: PlaywrightRunArgs): Promise<TaskResult> {
   const name = process.env.USER_NAME?.trim();
   const phone1 = process.env.USER_PHONE_1?.trim();
@@ -87,6 +137,12 @@ async function run({ page, context, maxIterations }: PlaywrightRunArgs): Promise
 
       await safeGoto(workPage, TARGET_URL, { waitUntil: 'load', timeout: 30000 }, 2);
 
+      // 상품 페이지에서 금액 동적 추출
+      const productPrice = await getProductPrice(workPage);
+      if (productPrice !== DEFAULT_POINT) {
+        console.log(`상품금액 추출 성공: ${productPrice}원`);
+      }
+
       iteration += 1; // 타깃 URL 진입 후에 이터레이션을 증가시켜 실제 시도 횟수만 센다
 
       const buyNowButton = workPage.locator('a', { hasText: '바로구매' }).first();
@@ -99,7 +155,7 @@ async function run({ page, context, maxIterations }: PlaywrightRunArgs): Promise
       await workPage.fill('#rcvMobile2', phone2);
       await workPage.fill('#rcvMobile3', phone3);
       await workPage.fill('#orderMemo', String(iteration));
-      await workPage.fill('#point_etc1', DEFAULT_POINT);
+      await workPage.fill('#point_etc1', productPrice);
 
       const pointUseButton = workPage.locator('#chkMcircelPoint a').first();
       if (await pointUseButton.isVisible()) {
