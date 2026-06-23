@@ -9,53 +9,60 @@ const ENTERTAINMENT_URL = 'https://www.doctorville.co.kr/entertainment/main';
 const SUCCESS_TEXT = '주문이 완료되었습니다.';
 const DEFAULT_POINT = '9700';
 
-/** 상품 페이지에서 금액을 추출합니다. 실패 시 DEFAULT_POINT 반환 */
+/** 결제 폼에서 실제 결제 금액 추출 */
 async function getProductPrice(page: any): Promise<string> {
-  const selectors = [
-    '#goods_price',
-    '#goodsPrice',
-    '#salePrice',
-    '#totalPrice',
-    '#price',
-    'em#totalPrice',
-    '#s_price',
-    '.sell_price',
-    '.sale_price',
-    'span.price',
-    '.price',
-    'span[id*="price"]',
-    'em[id*="price"]',
-    'strong[id*="price"]',
-    'strong[id*="sale"]',
+  // 결제 폼의 주문 요약 영역 탐색 (바로구매 후에만 활성화됨)
+  const summarySelectors = [
+    '#divOrderSummary',
+    '.order_summary',
+    '.pay_info',
+    '.order_total_price',
+    '.price_summary',
+    '[class*="summary"]',
+    '[class*="total"]',
+    '[class*="pay"]',
   ];
-  for (const sel of selectors) {
+  for (const sel of summarySelectors) {
     try {
       const el = page.locator(sel).first();
       if ((await el.count()) > 0) {
-        const text = (await el.textContent()) || '';
-        const cleaned = text.replace(/[^0-9]/g, '');
-        if (cleaned.length > 0) {
-          return cleaned;
+        const text = await el.textContent();
+        if (text) {
+          // "9,700원" 패턴 전부 추출
+          const prices = [...text.matchAll(/(\d{1,3}(?:,\d{3})*)\s*원/g)].map((m) =>
+            m[1].replace(/,/g, ''),
+          );
+          if (prices.length > 0) {
+            // 할인가(정가보다 작은 금액) 우선, 없으면 첫 번째 금액
+            const salePrice = prices.find((p) => Number(p) < 10000);
+            return salePrice || prices[0];
+          }
         }
       }
     } catch {
       // ignore
     }
   }
-  // Fallback: 페이지 전체에서 "9,700" 같은 금액 패턴 찾기
+
+  // Fallback: 페이지 전체에서 상품금액 관련 금액 추출
   try {
     const body = page.locator('body');
     const text = await body.textContent();
     if (text) {
-      // "KRW" 또는 "원" 앞의 숫자 찾기
-      const priceMatch = text.match(/(\d{1,3}(?:,\d{3})*)\s*(?:원|KRW|₩)/);
-      if (priceMatch) {
-        return priceMatch[1].replace(/,/g, '');
-      }
+      // "상품금액" 키워드 뒤의 금액 추출
+      const goodsAmtMatch = text.match(/상품금액[^\d]*(\d{1,3}(?:,\d{3})*)/);
+      if (goodsAmtMatch) return goodsAmtMatch[1].replace(/,/g, '');
+      // 결제 금액 키워드
+      const payMatch = text.match(/결제\s*금액[^\d]*(\d{1,3}(?:,\d{3})*)/);
+      if (payMatch) return payMatch[1].replace(/,/g, '');
+      // 총 금액
+      const totalMatch = text.match(/총\s*(?:상품\s*)?금액[^\d]*(\d{1,3}(?:,\d{3})*)/);
+      if (totalMatch) return totalMatch[1].replace(/,/g, '');
     }
   } catch {
     // ignore
   }
+
   return DEFAULT_POINT;
 }
 
@@ -139,19 +146,19 @@ async function run({ page, context, maxIterations }: PlaywrightRunArgs): Promise
 
       await safeGoto(workPage, TARGET_URL, { waitUntil: 'load', timeout: 30000 }, 2);
 
-      // 상품 페이지에서 금액 동적 추출
-      const productPrice = await getProductPrice(workPage);
-      if (productPrice !== DEFAULT_POINT) {
-        console.log(`상품금액 추출 성공: ${productPrice}원`);
-      }
-
       iteration += 1; // 타깃 URL 진입 후에 이터레이션을 증가시켜 실제 시도 횟수만 센다
 
       const buyNowButton = workPage.locator('a', { hasText: '바로구매' }).first();
       await buyNowButton.waitFor({ state: 'visible', timeout: 15000 });
       await buyNowButton.click();
 
+      // 바로구매 후 결제 폼이 로드되면 실제 결제 금액 추출
       await workPage.waitForSelector('#rcvName', { timeout: 10000 });
+      const productPrice = await getProductPrice(workPage);
+      if (productPrice !== DEFAULT_POINT) {
+        console.log(`상품금액 추출 성공: ${productPrice}원`);
+      }
+
       await workPage.fill('#rcvName', name);
       await workPage.fill('#rcvMobile1', phone1);
       await workPage.fill('#rcvMobile2', phone2);
