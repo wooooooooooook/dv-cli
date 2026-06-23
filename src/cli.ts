@@ -8,6 +8,7 @@ import * as checkPointTask from './tasks/check_point';
 import * as naverpayTask from './tasks/naverpay_point_exchange';
 import * as baeminTask from './tasks/baemin_point_exchange';
 import * as kakaopayTask from './tasks/kakaopay_point_exchange';
+import * as kakaopay5kTask from './tasks/kakaopay5k_point_exchange';
 import * as attendanceTask from './tasks/attendance';
 import * as todayQuizTask from './tasks/today_quiz';
 
@@ -77,6 +78,16 @@ program.command('kakaopay')
       await ensureLoggedIn({ page, context });
       const result = await kakaopayTask.run({ page, context });
       console.log('카카오페이 교환 결과:', JSON.stringify(result));
+    });
+  });
+
+program.command('kakaopay5k')
+  .description('카카오페이 포인트 5천원권 교환')
+  .action(async () => {
+    await withBrowser(async (page, context) => {
+      await ensureLoggedIn({ page, context });
+      const result = await kakaopay5kTask.run({ page, context });
+      console.log('카카오페이5k 교환 결과:', JSON.stringify(result));
     });
   });
 
