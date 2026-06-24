@@ -111,9 +111,9 @@ async function run({ page, context }: PlaywrightRunArgs) {
       await tempPage.waitForSelector('.member_point', { timeout: 10000 });
       const current = await extractCurrentPoint(tempPage);
 
-      await tempPage.locator('.member_point').first().click();
-      await tempPage.waitForURL('**/pointUseHistoryList', { timeout: 10000 });
-      await tempPage.waitForSelector('table tbody tr', { timeout: 10000 });
+      // 직접 내역 페이지로 이동 (팝업 회피)
+      await safeGoto(tempPage, 'https://www.doctorville.co.kr/my/point/pointUseHistoryList', { waitUntil: 'load', timeout: 30000 }, 1);
+      await tempPage.waitForSelector('table tbody tr, [class*="list"] tr', { timeout: 10000 }).catch(() => {});
       const history = await extractHistory(tempPage, 10);
 
       const historyText = formatHistory(history);
