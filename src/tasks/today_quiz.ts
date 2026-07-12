@@ -114,7 +114,7 @@ async function findQuizHref(page: PlaywrightRunArgs['page']) {
     await safeGoto(page, url, { waitUntil: 'load', timeout: 30000 }, 2);
     const quizBg = page.locator('.product_list .quiz_bg').first();
     if (!(await quizBg.count())) continue;
-    const href = await page.evaluate((el) => {
+    const href = await page.evaluate((el: Element) => {
       let cur: Element | null = el as Element;
       while (cur && cur.nodeType === 1) {
         const a = cur as HTMLAnchorElement;

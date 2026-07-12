@@ -4,23 +4,33 @@ import type { PlaywrightRunArgs, TaskResult } from '../types';
 import { ensureLoggedIn, safeGoto, sendTelegram, sleep } from '../modules/utils';
 import { getPoint } from './check_point';
 
-const TARGET_URL = 'https://mcircle.bizmarketb2b.com/Goods/Content.aspx?guid=14131415&catecode=14592';
+const TARGET_URL = 'https://mcircle.bizmarketb2b.com/Goods/Content.aspx?guid=14627533&catecode=14592';
 const ENTERTAINMENT_URL = 'https://www.doctorville.co.kr/entertainment/main';
 const SUCCESS_TEXT = '주문이 완료되었습니다.';
-const DEFAULT_POINT = '4900';
+const DEFAULT_POINT = '3000';
 
 /** 결제 폼에서 실제 결제 금액 추출 */
 async function getProductPrice(page: any): Promise<string> {
-  // 결제 폼의 주문 요약 영역 탐색 (바로구매 후에만 활성화됨)
+  const goodsPageSelectors = ['.item_price_n', '.item_price_s'];
+  for (const sel of goodsPageSelectors) {
+    try {
+      const el = page.locator(sel).first();
+      if ((await el.count()) > 0) {
+        const text = (await el.textContent()) || '';
+        const cleaned = text.replace(/[^0-9]/g, '');
+        if (cleaned.length >= 3) {
+          return cleaned;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   const summarySelectors = [
-    '#divOrderSummary',
-    '.order_summary',
-    '.pay_info',
-    '.order_total_price',
-    '.price_summary',
-    '[class*="summary"]',
-    '[class*="total"]',
-    '[class*="pay"]',
+    '.order_price_total', '.order_price', '#divOrderSummary', '.order_summary',
+    '.pay_info', '.order_total_price', '.price_summary',
+    '[class*="summary"]', '[class*="total"]', '[class*="pay"]',
   ];
   for (const sel of summarySelectors) {
     try {
@@ -28,12 +38,10 @@ async function getProductPrice(page: any): Promise<string> {
       if ((await el.count()) > 0) {
         const text = await el.textContent();
         if (text) {
-          const prices = [...text.matchAll(/(\d{1,3}(?:,\d{3})*)\s*원/g)].map((m) =>
-            m[1].replace(/,/g, ''),
-          );
+          const prices = [...text.matchAll(/(\d{1,3}(?:,\d{3})*)\s*원/g)]
+            .map((m) => m[1].replace(/,/g, ''));
           if (prices.length > 0) {
-            // 할인가(정가보다 작은 금액) 우선, 없으면 첫 번째 금액
-            const salePrice = prices.find((p) => Number(p) < 5000);
+            const salePrice = prices.find((p) => Number(p) < 3000);
             return salePrice || prices[0];
           }
         }
@@ -43,7 +51,6 @@ async function getProductPrice(page: any): Promise<string> {
     }
   }
 
-  // Fallback: 페이지 전체에서 상품금액 관련 금액 추출
   try {
     const body = page.locator('body');
     const text = await body.textContent();
@@ -67,40 +74,36 @@ async function run({ page, context, maxIterations }: PlaywrightRunArgs): Promise
   const phone1 = process.env.USER_PHONE_1?.trim();
   const phone2 = process.env.USER_PHONE_2?.trim();
   const phone3 = process.env.USER_PHONE_3?.trim();
-  const finalMaxIterations = maxIterations ?? 10;
-  const refreshEvery = Number(process.env.NAVERPAY_REFRESH_EVERY || '3'); // 새 페이지로 리프레시할 주기
-  const iterationDelayMs = Number(process.env.NAVERPAY_ITERATION_DELAY_MS || '500'); // 반복 간 대기 시간
+  const finalMaxIterations = maxIterations ?? 1;
+  const refreshEvery = Number(
+    process.env.KAKAOPAY3K_REFRESH_EVERY || process.env.NAVERPAY_REFRESH_EVERY || '3',
+  );
+  const iterationDelayMs = Number(
+    process.env.KAKAOPAY3K_ITERATION_DELAY_MS || process.env.NAVERPAY_ITERATION_DELAY_MS || '500',
+  );
 
   if (!name || !phone1 || !phone2 || !phone3) {
-    const missing = [
-      !name ? 'USER_NAME' : null,
-      !phone1 ? 'USER_PHONE_1' : null,
-      !phone2 ? 'USER_PHONE_2' : null,
-      !phone3 ? 'USER_PHONE_3' : null,
-    ]
-      .filter(Boolean)
-      .join(', ');
-    const message = `네이버페이포인트교환 실패: 환경변수(${missing})를 확인해주세요.`;
+    const missing = [name ? null : 'USER_NAME', phone1 ? null : 'USER_PHONE_1',
+      phone2 ? null : 'USER_PHONE_2', phone3 ? null : 'USER_PHONE_3'].filter(Boolean).join(', ');
+    const message = `카카오페이3k포인트교환 실패: 환경변수(${missing})를 확인해주세요.`;
     await sendTelegram(`❗ ${message}`).catch(() => {});
     return { success: false };
   }
 
   let workPage = page;
-
   if (!context) {
-    const message = '네이버페이포인트교환 실패: 로그인 확인을 위해 context가 필요합니다.';
-    await sendTelegram(`❗ ${message}`).catch(() => {});
+    await sendTelegram('❗ 카카오페이3k포인트교환 실패: context 필요.').catch(() => {});
     return { success: false };
   }
 
-  await ensureLoggedIn({ page, context }).catch(() => {});
-
+  await ensureLoggedIn({ page: workPage, context }).catch(() => {});
   const startPoint = await getPoint(context);
-  await sendTelegram(`💳 네이버페이포인트교환 시작 전 남은 포인트: ${startPoint}`).catch(() => {});
+  await sendTelegram(`💳 카카오페이3k포인트교환 시작 전 남은 포인트: ${startPoint}`).catch(() => {});
 
   await fs.mkdir(path.join(process.cwd(), 'screenshot'), { recursive: true });
   let successCount = 0;
   let iteration = 0;
+
   const prepareShopPage = async () => {
     await ensureLoggedIn({ page: workPage, context }).catch(() => {});
     await safeGoto(workPage, ENTERTAINMENT_URL, { waitUntil: 'load', timeout: 20000 }, 2);
@@ -108,40 +111,29 @@ async function run({ page, context, maxIterations }: PlaywrightRunArgs): Promise
     if ((await pointShopLink.count()) > 0) {
       const currentUrl = workPage.url();
       await Promise.all([
-        workPage
-          .waitForURL((url: URL) => url.toString() !== currentUrl, { waitUntil: 'domcontentloaded', timeout: 10000 })
-          .catch(() => null),
+        workPage.waitForURL((url: URL) => url.toString() !== currentUrl, { waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => null),
         pointShopLink.click(),
       ]);
     }
   };
 
   try {
-    // 초기 1회 로그인 및 포인트샵 진입
     await prepareShopPage();
 
-    // finalMaxIterations가 0이면 실패할 때까지 무제한 반복
     while (finalMaxIterations === 0 || iteration < finalMaxIterations) {
-      // 일정 주기마다 새 페이지로 재생성하여 누적 리소스 사용을 줄임
       if (refreshEvery > 0 && iteration > 0 && iteration % refreshEvery === 0) {
-        try {
-          await workPage.close().catch(() => {});
-        } catch (_e) {
-          /* ignore */
-        }
+        try { await workPage.close().catch(() => {}); } catch (_e) { /* ignore */ }
         workPage = await context.newPage();
         await prepareShopPage();
       }
 
       await safeGoto(workPage, TARGET_URL, { waitUntil: 'load', timeout: 30000 }, 2);
-
-      iteration += 1; // 타깃 URL 진입 후에 이터레이션을 증가시켜 실제 시도 횟수만 센다
+      iteration += 1;
 
       const buyNowButton = workPage.locator('a', { hasText: '바로구매' }).first();
       await buyNowButton.waitFor({ state: 'visible', timeout: 15000 });
       await buyNowButton.click();
 
-      // 바로구매 후 결제 폼이 로드되면 실제 결제 금액 추출
       await workPage.waitForSelector('#rcvName', { timeout: 10000 });
       const productPrice = await getProductPrice(workPage);
       if (productPrice !== DEFAULT_POINT) {
@@ -156,49 +148,33 @@ async function run({ page, context, maxIterations }: PlaywrightRunArgs): Promise
       await workPage.fill('#point_etc1', productPrice);
 
       const pointUseButton = workPage.locator('#chkMcircelPoint a').first();
-      if (await pointUseButton.isVisible()) {
-        await pointUseButton.click();
-      }
+      if (await pointUseButton.isVisible()) await pointUseButton.click();
 
       const agreePersonalInfo = workPage.locator('label[for="agreeFlow"]').first();
-      if (await agreePersonalInfo.isVisible()) {
-        await agreePersonalInfo.click();
-      }
+      if (await agreePersonalInfo.isVisible()) await agreePersonalInfo.click();
 
       const agreeResale = workPage.locator('label[for="chkReSale"]').first();
-      if (await agreeResale.isVisible()) {
-        await agreeResale.click();
-      }
+      if (await agreeResale.isVisible()) await agreeResale.click();
 
       const currentUrl = workPage.url();
       await Promise.all([
-        workPage
-          .waitForURL((url: URL) => url.toString() !== currentUrl, { waitUntil: 'domcontentloaded', timeout: 15000 })
-          .catch(() => null),
+        workPage.waitForURL((url: URL) => url.toString() !== currentUrl, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => null),
         workPage.locator('#btnPayment').click(),
       ]);
 
-      const orderCompleted = await workPage
-        .locator(`text=${SUCCESS_TEXT}`)
-        .first()
-        .isVisible()
-        .catch(() => false);
+      const orderCompleted = await workPage.locator(`text=${SUCCESS_TEXT}`).first().isVisible().catch(() => false);
 
       if (orderCompleted) {
         successCount += 1;
-        await sendTelegram(`✅ 네이버페이포인트교환 성공 (${successCount}회 누적, 시도 ${iteration}회)`).catch(
-          () => {},
-        );
-        if (iterationDelayMs > 0) {
-          await sleep(iterationDelayMs);
-        }
+        await sendTelegram(`✅ 카카오페이3k포인트교환 성공 (${successCount}회 누적, 시도 ${iteration}회)`).catch(() => {});
+        if (iterationDelayMs > 0) await sleep(iterationDelayMs);
         continue;
       }
 
-      const failureShot = path.join(process.cwd(), 'screenshot', 'naverpay_point_exchange_failure.png');
+      const failureShot = path.join(process.cwd(), 'screenshot', 'kakaopay3k_point_exchange_failure.png');
       await workPage.screenshot({ path: failureShot, fullPage: true }).catch(() => {});
       const endPoint = await getPoint(context);
-      const message = `네이버페이포인트교환 실패 (시도 ${iteration}회, 성공 ${successCount}회). '${SUCCESS_TEXT}' 문구를 찾지 못했습니다.\n종료 후 남은 포인트: ${endPoint}`;
+      const message = `카카오페이3k포인트교환 실패 (시도 ${iteration}회, 성공 ${successCount}회). '${SUCCESS_TEXT}' 문구를 찾지 못했습니다.\n종료 후 남은 포인트: ${endPoint}`;
       await sendTelegram(`❗ ${message}`, failureShot).catch(() => {});
       return { success: false };
     }
@@ -206,17 +182,15 @@ async function run({ page, context, maxIterations }: PlaywrightRunArgs): Promise
     const endPoint = await getPoint(context);
     const message =
       finalMaxIterations > 0
-        ? `네이버페이포인트교환 완료: 설정된 ${finalMaxIterations}회 반복 종료 (성공 ${successCount}회).\n종료 후 남은 포인트: ${endPoint}`
-        : `네이버페이포인트교환 종료: 성공 ${successCount}회 후 반복이 중단되었습니다.\n종료 후 남은 포인트: ${endPoint}`;
+        ? `카카오페이3k포인트교환 완료: 설정된 ${finalMaxIterations}회 반복 종료 (성공 ${successCount}회).\n종료 후 남은 포인트: ${endPoint}`
+        : `카카오페이3k포인트교환 종료: 성공 ${successCount}회 후 반복이 중단되었습니다.\n종료 후 남은 포인트: ${endPoint}`;
     await sendTelegram(`✅ ${message}`).catch(() => {});
     return { success: true };
   } catch (error) {
-    const errorShot = path.join(process.cwd(), 'screenshot', 'naverpay_point_exchange_error.png');
+    const errorShot = path.join(process.cwd(), 'screenshot', 'kakaopay3k_point_exchange_error.png');
     await workPage.screenshot({ path: errorShot, fullPage: true }).catch(() => {});
     const endPoint = await getPoint(context);
-    const message = `네이버페이포인트교환 오류 발생 (성공 ${successCount}회): ${
-      error instanceof Error ? error.message : String(error)
-    }\n종료 후 남은 포인트: ${endPoint}`;
+    const message = `카카오페이3k포인트교환 오류 발생 (성공 ${successCount}회): ${error instanceof Error ? error.message : String(error)}\n종료 후 남은 포인트: ${endPoint}`;
     await sendTelegram(`❗ ${message}`, errorShot).catch(() => {});
     return { success: false };
   }

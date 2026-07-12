@@ -71,12 +71,7 @@ async function run({ page, context, maxIterations }: PlaywrightRunArgs): Promise
   const phone1 = process.env.USER_PHONE_1?.trim();
   const phone2 = process.env.USER_PHONE_2?.trim();
   const phone3 = process.env.USER_PHONE_3?.trim();
-  const finalMaxIterations =
-    maxIterations !== undefined
-      ? maxIterations
-      : process.env.BAEMIN_MAX_ITERATIONS !== undefined
-        ? Number(process.env.BAEMIN_MAX_ITERATIONS)
-        : 1;
+  const finalMaxIterations = maxIterations ?? 1;
   const refreshEvery = Number(process.env.BAEMIN_REFRESH_EVERY || process.env.NAVERPAY_REFRESH_EVERY || '3'); // 새 페이지로 리프레시할 주기
   const iterationDelayMs = Number(
     process.env.BAEMIN_ITERATION_DELAY_MS || process.env.NAVERPAY_ITERATION_DELAY_MS || '500',

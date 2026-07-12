@@ -36,13 +36,16 @@ npx tsx src/cli.ts naverpay     # 네이버페이 포인트 교환
 npx tsx src/cli.ts baemin       # 배민 포인트 교환
 npx tsx src/cli.ts kakaopay     # 카카오페이 1만원권 (9,900원)
 npx tsx src/cli.ts kakaopay5k   # 카카오페이 5천원권 (5,000원)
+npx tsx src/cli.ts kakaopay3k   # 카카오페이 3천원권 (3,000원)
 npx tsx src/cli.ts attendance   # 출석 체크
 npx tsx src/cli.ts today_quiz   # 오늘의 퀴즈
 
-# 반복 구매 (MAX_ITERATIONS로 횟수 지정)
-KAKAOPAY_MAX_ITERATIONS=5 npx tsx src/cli.ts kakaopay
-KAKAOPAY5K_MAX_ITERATIONS=3 npx tsx src/cli.ts kakaopay5k
-BAEMIN_MAX_ITERATIONS=10 npx tsx src/cli.ts baemin
+# 반복 구매 (환경변수 대신 -c 옵션 사용)
+npx tsx src/cli.ts kakaopay -c 5      # 카카오페이 1만원권 5회
+npx tsx src/cli.ts kakaopay5k -c 10   # 카카오페이 5천원권 10회
+npx tsx src/cli.ts kakaopay3k -c 5    # 카카오페이 3천원권 5회
+npx tsx src/cli.ts baemin -c 10       # 배민 1만원권 10회
+npx tsx src/cli.ts naverpay -c 10     # 네이버페이 5천원권 10회
 
 # npm scripts
 npm run login
@@ -51,16 +54,19 @@ npm run point
 
 ## 명령어
 
-| 명령어 | 설명 | 반복구매 환경변수 |
+| 명령어 | 설명 | 반복구매 옵션 |
 |--------|------|-----------------|
 | `login` | 닥터빌 로그인 (세션 쿠키 저장) | - |
 | `point` | 현재 보유 포인트 조회 | - |
-| `naverpay` | 네이버페이 5천원권 (4,900원) | `NAVERPAY_MAX_ITERATIONS` |
-| `baemin` | 배민 1만원권 (9,700원) | `BAEMIN_MAX_ITERATIONS` |
-| `kakaopay` | 카카오페이 1만원권 (9,900원) | `KAKAOPAY_MAX_ITERATIONS` |
-| `kakaopay5k` | 카카오페이 5천원권 (5,000원) | `KAKAOPAY5K_MAX_ITERATIONS` |
+| `naverpay` | 네이버페이 5천원권 (4,900원) | `-c, --count <N>` |
+| `baemin` | 배민 1만원권 (9,700원) | `-c, --count <N>` |
+| `kakaopay` | 카카오페이 1만원권 (9,900원) | `-c, --count <N>` |
+| `kakaopay5k` | 카카오페이 5천원권 (5,000원) | `-c, --count <N>` |
+| `kakaopay3k` | 카카오페이 3천원권 (3,000원) | `-c, --count <N>` |
 | `attendance` | 출석 체크 | - |
 | `today_quiz` | 오늘의 퀴즈 | - |
+
+> **반복 구매는 환경변수(`*_MAX_ITERATIONS`) 대신 CLI 옵션 `-c <N>` 또는 `--count <N>`을 사용하세요. 최대 10회로 제한됩니다.**
 
 ## 프로젝트 구조
 

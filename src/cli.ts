@@ -9,6 +9,7 @@ import * as naverpayTask from './tasks/naverpay_point_exchange';
 import * as baeminTask from './tasks/baemin_point_exchange';
 import * as kakaopayTask from './tasks/kakaopay_point_exchange';
 import * as kakaopay5kTask from './tasks/kakaopay5k_point_exchange';
+import * as kakaopay3kTask from './tasks/kakaopay3k_point_exchange';
 import * as attendanceTask from './tasks/attendance';
 import * as todayQuizTask from './tasks/today_quiz';
 
@@ -17,11 +18,11 @@ dotenv.config();
 const program = new Command();
 program.name('dv-cli').description('Doctor-Ville CLI wrapper (login, point).').version('0.1.0');
 
-async function withBrowser(callback: (page:any, context:any) => Promise<void>) {
+async function withBrowser(callback: (page: any, context: any) => Promise<void>) {
   const userDataDir = path.join(process.cwd(), '.browser-data');
-  const context = await chromium.launchPersistentContext(userDataDir, { 
-    headless: true, 
-    args: ['--no-sandbox'] 
+  const context = await chromium.launchPersistentContext(userDataDir, {
+    headless: true,
+    args: ['--no-sandbox'],
   });
   const page = context.pages()[0] || await context.newPage();
   try {
@@ -53,41 +54,56 @@ program.command('point')
 
 program.command('naverpay')
   .description('네이버페이 포인트 교환')
-  .action(async () => {
+  .option('-c, --count <number>', '반복 횟수 (최대 10회, 기본 1회)', '1')
+  .action(async (opts) => {
     await withBrowser(async (page, context) => {
       await ensureLoggedIn({ page, context });
-      const result = await naverpayTask.run({ page, context });
+      const result = await naverpayTask.run({ page, context, maxIterations: Math.min(10, Number(opts.count)) });
       console.log('네이버페이 교환 결과:', JSON.stringify(result));
     });
   });
 
 program.command('baemin')
   .description('배민 포인트 교환')
-  .action(async () => {
+  .option('-c, --count <number>', '반복 횟수 (최대 10회, 기본 1회)', '1')
+  .action(async (opts) => {
     await withBrowser(async (page, context) => {
       await ensureLoggedIn({ page, context });
-      const result = await baeminTask.run({ page, context });
+      const result = await baeminTask.run({ page, context, maxIterations: Math.min(10, Number(opts.count)) });
       console.log('배민 교환 결과:', JSON.stringify(result));
     });
   });
 
 program.command('kakaopay')
   .description('카카오페이 포인트 교환')
-  .action(async () => {
+  .option('-c, --count <number>', '반복 횟수 (최대 10회, 기본 1회)', '1')
+  .action(async (opts) => {
     await withBrowser(async (page, context) => {
       await ensureLoggedIn({ page, context });
-      const result = await kakaopayTask.run({ page, context });
+      const result = await kakaopayTask.run({ page, context, maxIterations: Math.min(10, Number(opts.count)) });
       console.log('카카오페이 교환 결과:', JSON.stringify(result));
     });
   });
 
 program.command('kakaopay5k')
   .description('카카오페이 포인트 5천원권 교환')
-  .action(async () => {
+  .option('-c, --count <number>', '반복 횟수 (최대 10회, 기본 1회)', '1')
+  .action(async (opts) => {
     await withBrowser(async (page, context) => {
       await ensureLoggedIn({ page, context });
-      const result = await kakaopay5kTask.run({ page, context });
+      const result = await kakaopay5kTask.run({ page, context, maxIterations: Math.min(10, Number(opts.count)) });
       console.log('카카오페이5k 교환 결과:', JSON.stringify(result));
+    });
+  });
+
+program.command('kakaopay3k')
+  .description('카카오페이 포인트 3천원권 교환')
+  .option('-c, --count <number>', '반복 횟수 (최대 10회, 기본 1회)', '1')
+  .action(async (opts) => {
+    await withBrowser(async (page, context) => {
+      await ensureLoggedIn({ page, context });
+      const result = await kakaopay3kTask.run({ page, context, maxIterations: Math.min(10, Number(opts.count)) });
+      console.log('카카오페이3k 교환 결과:', JSON.stringify(result));
     });
   });
 
