@@ -54,10 +54,10 @@ async function parseTodayQuizQuestions(page: PlaywrightRunArgs['page']): Promise
       const input = item.locator('input[type="radio"]');
       const text = await label.innerText().catch(() => '');
       const value = (await input.getAttribute('value')) || '';
-      options.push({ index: i + 1, text: text.trim(), value });
+      options.push({ index: i + 1, text: text.trim(), value, id: value });
     }
     if (questionText) {
-      questions.push({ questionText: questionText.trim(), options });
+      questions.push({ questionText: questionText.trim(), options, isQuiz: false, name: '' });
     }
   }
   return questions;
