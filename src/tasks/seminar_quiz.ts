@@ -320,7 +320,7 @@ async function processSeminarQuiz(page: Page, seminarName?: string, isAdvancedSu
     const submitExists = await submitBtn.count() > 0;
     if (submitExists) {
       await submitBtn.click({ force: true }).catch(() => {});
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(10000);
 
       if (!isAdvancedSurvey) {
         const confirmBtn = page.locator('button[type="button"]:text("확인")').first();
@@ -328,6 +328,9 @@ async function processSeminarQuiz(page: Page, seminarName?: string, isAdvancedSu
           console.log('[seminar_quiz] 확인 버튼 발견, 클릭');
           await confirmBtn.click({ force: true }).catch(() => {});
           await page.waitForTimeout(500);
+          const midShotPath = `screenshot/quiz_confirm_${Date.now()}.png`;
+          await page.screenshot({ path: midShotPath, fullPage: true }).catch(() => {});
+          await sendTelegram('중간 스크린샷 (확인 클릭 후)', midShotPath).catch(() => {});
         }
 
         await page.waitForURL('**/outro**', { timeout: 10000 }).catch(() => {});
